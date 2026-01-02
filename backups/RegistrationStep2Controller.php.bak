@@ -1,0 +1,62 @@
+<?php
+
+namespace App\Http\Controllers\Auth;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+use App\Models\User;
+use Illuminate\Support\Facades\Auth;
+
+class RegistrationStep2Controller extends Controller
+{
+    public function __construct()
+    {
+        $this->middleware('auth');
+    }
+
+    public function showForm()
+    {
+        $user = Auth::user();
+        return view('auth.boxed.registration_step2', compact('user'));
+    }
+
+    public function store(Request $request)
+    {
+        $user = User::find(Auth::id());
+
+        $rules = [
+            'address' => 'required|string|max:255',
+            'city' => 'required|string|max:255',
+            'postal_code' => 'required|string|max:20',
+            'country' => 'required|string|max:255',
+            'gender' => 'required|in:male,female,other',
+            'secondary_phone' => 'nullable|string|max:20',
+        ];
+
+        if (empty($user->phone)) {
+            $rules['phone'] = 'required|string|max:20|unique:users,phone,' . $user->id;
+        }
+
+        $request->validate($rules);
+
+        $user->address = $request->address;
+        $user->city = $request->city;
+        $user->postal_code = $request->postal_code;
+        $user->country = $request->country;
+        $user->gender = $request->gender;
+        $user->secondary_phone = $request->secondary_phone;
+
+        if (empty($user->phone)) {
+            $user->phone = $request->phone;
+        }
+
+        $user->save();
+
+        flash(translate('Registration completed successfully.'))->success();
+
+        if ($user->user_type == 'seller') {
+            return redirect()->route('seller.dashboard');
+        }
+        return redirect()->route('dashboard');
+    }
+}
